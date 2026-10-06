@@ -1,0 +1,8 @@
+numpy==2.3.5
+soundfile==0.14.0
+scipy==1.18.1
+librosa==1.0.0
+pyworld==0.3.5
+matplotlib==3.11.2
+scikit-learn==1.9.1
+joblib==1.6.0

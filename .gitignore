@@ -1,0 +1,73 @@
+# Python / build outputs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.spec
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.git/
+.aider*
+AGENTS.md
+*.sqlite3
+*.db
+*.pem
+*.key
+credentials.json
+token.json
+
+# Voicebank and oto data: never commit source audio or generated/manual settings
+*.wav
+*.wave
+*.oto.ini
+oto.ini
+推定後_oto.ini
+手動修正後_oto.ini
+
+# Training/evaluation data and local caches
+data/
+datasets/
+# Release-only model staging; never commit model binaries to source
+models/
+references/
+reference_audio/
+training_data/
+evaluation_data/
+cache/
+logs/
+*.log
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.joblib
+*.pkl
+*.pickle
+*.jsonl
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.html
+*.bat
+*.ps1
+
+# Packaged applications are distributed through GitHub Releases
+*.exe
+*.msi
+*.zip
+*.pkg
+*.pyz
+*.toc
+
+# OS/editor files
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
