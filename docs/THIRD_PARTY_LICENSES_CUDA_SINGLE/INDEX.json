@@ -1,0 +1,429 @@
+[
+  {
+    "package": "altgraph",
+    "version": "0.17.5",
+    "texts": [
+      "altgraph/altgraph-0.17.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "certifi",
+    "version": "2026.7.22",
+    "texts": [
+      "certifi/certifi-2026.7.22.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "cffi",
+    "version": "2.1.1",
+    "texts": [
+      "cffi/cffi-2.1.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "charset-normalizer",
+    "version": "3.5.2",
+    "texts": [
+      "charset-normalizer/charset_normalizer-3.5.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "cloudpickle",
+    "version": "3.1.2",
+    "texts": [
+      "cloudpickle/cloudpickle-3.1.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "contourpy",
+    "version": "1.4.0",
+    "texts": [
+      "contourpy/contourpy-1.4.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "cycler",
+    "version": "0.12.1",
+    "texts": [
+      "cycler/cycler-0.12.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "decorator",
+    "version": "5.3.1",
+    "texts": [
+      "decorator/decorator-5.3.1.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "filelock",
+    "version": "3.32.3",
+    "texts": [
+      "filelock/filelock-3.32.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "fonttools",
+    "version": "4.66.1",
+    "texts": [
+      "fonttools/fonttools-4.66.1.dist-info/licenses/LICENSE",
+      "fonttools/fonttools-4.66.1.dist-info/licenses/LICENSE.external"
+    ]
+  },
+  {
+    "package": "fsspec",
+    "version": "2026.7.0",
+    "texts": [
+      "fsspec/fsspec-2026.7.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "idna",
+    "version": "3.20",
+    "texts": [
+      "idna/idna-3.20.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "package": "jinja2",
+    "version": "3.1.6",
+    "texts": [
+      "jinja2/jinja2-3.1.6.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "joblib",
+    "version": "1.6.0",
+    "texts": [
+      "joblib/joblib-1.6.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "kiwisolver",
+    "version": "1.5.1",
+    "texts": [
+      "kiwisolver/kiwisolver-1.5.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "lazy-loader",
+    "version": "0.6",
+    "texts": [
+      "lazy-loader/lazy_loader-0.6.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "package": "librosa",
+    "version": "1.0.0",
+    "texts": [
+      "librosa/librosa-1.0.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "package": "llvmlite",
+    "version": "0.49.0",
+    "texts": [
+      "llvmlite/llvmlite-0.49.0.dist-info/licenses/LICENSE",
+      "llvmlite/llvmlite-0.49.0.dist-info/licenses/LICENSE.thirdparty"
+    ]
+  },
+  {
+    "package": "markupsafe",
+    "version": "3.0.3",
+    "texts": [
+      "markupsafe/markupsafe-3.0.3.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "matplotlib",
+    "version": "3.11.2",
+    "texts": [
+      "matplotlib/matplotlib-3.11.2.dist-info/LICENSE",
+      "matplotlib/matplotlib/mpl-data/fonts/ttf/LICENSE_DEJAVU",
+      "matplotlib/matplotlib/mpl-data/fonts/ttf/LICENSE_STIX"
+    ]
+  },
+  {
+    "package": "mpmath",
+    "version": "1.3.0",
+    "texts": [
+      "mpmath/mpmath-1.3.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "msgpack",
+    "version": "1.2.3",
+    "texts": [
+      "msgpack/msgpack-1.2.3.dist-info/licenses/COPYING"
+    ]
+  },
+  {
+    "package": "narwhals",
+    "version": "2.26.0",
+    "texts": [
+      "narwhals/narwhals-2.26.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "package": "networkx",
+    "version": "3.6.1",
+    "texts": [
+      "networkx/networkx-3.6.1.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "numba",
+    "version": "0.67.0",
+    "texts": [
+      "numba/numba-0.67.0.dist-info/licenses/LICENSE",
+      "numba/numba-0.67.0.dist-info/licenses/LICENSES.third-party"
+    ]
+  },
+  {
+    "package": "numpy",
+    "version": "2.3.5",
+    "texts": [
+      "numpy/numpy-2.3.5.dist-info/LICENSE.txt",
+      "numpy/numpy/_core/include/numpy/random/LICENSE.txt",
+      "numpy/numpy/ma/LICENSE",
+      "numpy/numpy/random/LICENSE.md"
+    ]
+  },
+  {
+    "package": "packaging",
+    "version": "26.3",
+    "texts": [
+      "packaging/packaging-26.3.dist-info/licenses/LICENSE",
+      "packaging/packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "packaging/packaging-26.3.dist-info/licenses/LICENSE.BSD",
+      "packaging/packaging/licenses/__init__.py",
+      "packaging/packaging/licenses/__pycache__/__init__.cpython-312.pyc",
+      "packaging/packaging/licenses/__pycache__/_spdx.cpython-312.pyc",
+      "packaging/packaging/licenses/_spdx.py"
+    ]
+  },
+  {
+    "package": "pefile",
+    "version": "2024.8.26",
+    "texts": [
+      "pefile/pefile-2024.8.26.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "pillow",
+    "version": "12.3.0",
+    "texts": [
+      "pillow/pillow-12.3.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "pip",
+    "version": "25.0.1",
+    "texts": [
+      "pip/pip-25.0.1.dist-info/LICENSE.txt",
+      "pip/pip/_vendor/packaging/licenses/__init__.py",
+      "pip/pip/_vendor/packaging/licenses/__pycache__/__init__.cpython-312.pyc",
+      "pip/pip/_vendor/packaging/licenses/__pycache__/_spdx.cpython-312.pyc",
+      "pip/pip/_vendor/packaging/licenses/_spdx.py"
+    ]
+  },
+  {
+    "package": "platformdirs",
+    "version": "4.12.2",
+    "texts": [
+      "platformdirs/platformdirs-4.12.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "pooch",
+    "version": "1.9.0",
+    "texts": [
+      "pooch/pooch-1.9.0.dist-info/licenses/AUTHORS.md",
+      "pooch/pooch-1.9.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "pycparser",
+    "version": "3.0",
+    "texts": [
+      "pycparser/pycparser-3.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "pyinstaller",
+    "version": "6.22.3",
+    "texts": [
+      "pyinstaller/pyinstaller-6.22.3.dist-info/licenses/COPYING.txt"
+    ]
+  },
+  {
+    "package": "pyinstaller-hooks-contrib",
+    "version": "2026.8",
+    "texts": [
+      "pyinstaller-hooks-contrib/pyinstaller_hooks_contrib-2026.8.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "pyparsing",
+    "version": "3.3.3",
+    "texts": [
+      "pyparsing/pyparsing-3.3.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "python-dateutil",
+    "version": "2.9.0.post0",
+    "texts": [
+      "python-dateutil/python_dateutil-2.9.0.post0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "pywin32-ctypes",
+    "version": "0.2.3",
+    "texts": [
+      "pywin32-ctypes/pywin32_ctypes-0.2.3.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "pyworld",
+    "version": "0.3.5",
+    "texts": [
+      "pyworld/pyworld-0.3.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "pyzmq",
+    "version": "27.2.0",
+    "texts": [
+      "pyzmq/pyzmq-27.2.0.dist-info/licenses/LICENSE.md",
+      "pyzmq/pyzmq-27.2.0.dist-info/licenses/licenses/LICENSE.libsodium.txt",
+      "pyzmq/pyzmq-27.2.0.dist-info/licenses/licenses/LICENSE.tornado.txt",
+      "pyzmq/pyzmq-27.2.0.dist-info/licenses/licenses/LICENSE.zeromq.txt"
+    ]
+  },
+  {
+    "package": "requests",
+    "version": "2.34.2",
+    "texts": [
+      "requests/requests-2.34.2.dist-info/licenses/LICENSE",
+      "requests/requests-2.34.2.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "package": "scikit-learn",
+    "version": "1.9.1",
+    "texts": [
+      "scikit-learn/scikit_learn-1.9.1.dist-info/licenses/COPYING",
+      "scikit-learn/sklearn/externals/array_api_compat/LICENSE",
+      "scikit-learn/sklearn/externals/array_api_extra/LICENSE"
+    ]
+  },
+  {
+    "package": "scipy",
+    "version": "1.18.1",
+    "texts": [
+      "scipy/scipy-1.18.1.dist-info/LICENSE.txt",
+      "scipy/scipy/_lib/_uarray/LICENSE",
+      "scipy/scipy/fft/_duccfft/LICENSE.md",
+      "scipy/scipy/integrate/LICENSE_DOP",
+      "scipy/scipy/spatial/qhull_src/COPYING_QHULL.txt"
+    ]
+  },
+  {
+    "package": "setuptools",
+    "version": "84.0.0",
+    "texts": [
+      "setuptools/setuptools-84.0.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "setuptools/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "setuptools/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/jaraco.text-4.0.0.dist-info/LICENSE",
+      "setuptools/setuptools/_vendor/jaraco_context-6.1.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/jaraco_functools-4.4.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/more_itertools-10.8.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE.APACHE",
+      "setuptools/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE.BSD",
+      "setuptools/setuptools/_vendor/packaging/licenses/__init__.py",
+      "setuptools/setuptools/_vendor/packaging/licenses/__pycache__/__init__.cpython-312.pyc",
+      "setuptools/setuptools/_vendor/packaging/licenses/__pycache__/_spdx.cpython-312.pyc",
+      "setuptools/setuptools/_vendor/packaging/licenses/_spdx.py",
+      "setuptools/setuptools/_vendor/platformdirs-4.4.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/tomli-2.4.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/_vendor/wheel-0.46.3.dist-info/licenses/LICENSE.txt",
+      "setuptools/setuptools/_vendor/zipp-3.23.0.dist-info/licenses/LICENSE",
+      "setuptools/setuptools/config/NOTICE",
+      "setuptools/setuptools/config/_validate_pyproject/NOTICE"
+    ]
+  },
+  {
+    "package": "six",
+    "version": "1.17.0",
+    "texts": [
+      "six/six-1.17.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "soundfile",
+    "version": "0.14.0",
+    "texts": [
+      "soundfile/_soundfile_data/COPYING",
+      "soundfile/licensing/license_notes.md",
+      "soundfile/soundfile-0.14.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "package": "soxr",
+    "version": "1.1.0",
+    "texts": [
+      "soxr/soxr-1.1.0.dist-info/licenses/COPYING.LGPL",
+      "soxr/soxr-1.1.0.dist-info/licenses/LICENSE-PFFFT.txt",
+      "soxr/soxr-1.1.0.dist-info/licenses/LICENSE-libsoxr.txt",
+      "soxr/soxr-1.1.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "sympy",
+    "version": "1.13.1",
+    "texts": [
+      "sympy/sympy-1.13.1.dist-info/LICENSE",
+      "sympy/sympy/parsing/latex/LICENSE.txt"
+    ]
+  },
+  {
+    "package": "threadpoolctl",
+    "version": "3.7.0",
+    "texts": [
+      "threadpoolctl/threadpoolctl-3.7.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "tkinterdnd2",
+    "version": "0.6.3",
+    "texts": [
+      "tkinterdnd2/tkinterdnd2-0.6.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "torch",
+    "version": "2.6.0+cpu",
+    "texts": [
+      "torch/torch-2.6.0+cpu.dist-info/LICENSE",
+      "torch/torch-2.6.0+cpu.dist-info/NOTICE"
+    ]
+  },
+  {
+    "package": "typing-extensions",
+    "version": "4.16.0",
+    "texts": [
+      "typing-extensions/typing_extensions-4.16.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "package": "urllib3",
+    "version": "2.8.0",
+    "texts": [
+      "urllib3/urllib3-2.8.0.dist-info/licenses/LICENSE.txt"
+    ]
+  }
+]

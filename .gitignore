@@ -1,4 +1,4 @@
-# Python / build outputs
+# Python and local build output
 __pycache__/
 *.py[cod]
 .venv/
@@ -6,33 +6,35 @@ venv/
 build/
 dist/
 *.spec
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Local configuration and credentials
+# Local configuration, credentials, and databases
 .env
 .env.*
 !.env.example
-.git/
-.aider*
-AGENTS.md
-*.sqlite3
-*.db
-*.pem
-*.key
 credentials.json
 token.json
+*.pem
+*.key
+*.sqlite3
+*.db
+.aider*
+AGENTS.md
 
-# Voicebank and oto data: never commit source audio or generated/manual settings
+# Voicebank audio and oto settings (never commit user or reference data)
 *.wav
 *.wave
-*.oto.ini
 oto.ini
+*.oto.ini
 推定後_oto.ini
+推定後_oto_backup.ini
 手動修正後_oto.ini
 
-# Training/evaluation data and local caches
+# Local datasets, models, caches, and logs
 data/
 datasets/
-# Release-only model staging; never commit model binaries to source
 models/
 references/
 reference_audio/
@@ -50,13 +52,6 @@ logs/
 *.pkl
 *.pickle
 *.jsonl
-*.csv
-*.png
-*.jpg
-*.jpeg
-*.html
-*.bat
-*.ps1
 
 # Packaged applications are distributed through GitHub Releases
 *.exe
@@ -66,7 +61,7 @@ logs/
 *.pyz
 *.toc
 
-# OS/editor files
+# OS and editor files
 Thumbs.db
 .DS_Store
 .idea/
