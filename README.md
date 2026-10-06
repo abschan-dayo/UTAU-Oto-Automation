@@ -4,7 +4,7 @@ WAVからUTAU音源の原音設定を自動推定します。推定結果は音�
 
 ## ダウンロード
 
-配布ファイルは[GitHub Releases](https://github.com/abschan-dayo/UTAU-Oto-Automation/releases)から取得してください。このリポジトリはPrivateです。ダウンロードにはリポジトリへのアクセス権が必要です。
+配布ファイルは[GitHub Releases](https://github.com/abschan-dayo/UTAU-Oto-Automation/releases)から取得してください。
 
 - **Windows CPU版**: `Autoto-CPU.exe`。CPUで動作する単体版です。
 - **Windows CUDA版**: `Autoto-CUDA.exe`。対応するNVIDIA GPUとドライバーがある場合にGPUを使います。CUDAが利用できない場合は通知を出してCPUに切り替えます。
@@ -55,4 +55,4 @@ Developer ID署名とApple公証は未実施です。macOSのセキュリティ�
 
 `algorithm/` に原音設定推定アルゴリズムとアプリの処理コードを含みます。原音設定エディタのソースコードは含みません。この制作ではCodexを主に使用しています。
 
-独自コードの条件は[LICENSE](LICENSE)、第三者ソフトウェアには各ライブラリのライセンスが適用されます。ビルド手順は[docs/ビルド.md](docs/ビルド.md)を参照してください。
+独自コードの条件は[LICENSE](LICENSE)を参照してください。再配布を行う場合の報告方法も同ファイルに記載しています。第三者ソフトウェアには各ライブラリのライセンスが適用されます。ビルド手順は[docs/ビルド.md](docs/ビルド.md)を参照してください。
