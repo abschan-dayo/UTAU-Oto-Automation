@@ -36,6 +36,12 @@ Developer ID署名とApple公証は未実施です。macOSのセキュリティ�
 
 詳しい保存動作は[使い方と上書きの説明](docs/使い方.md)を参照してください。
 
+## vLabelerとの連携とHeartbeat
+
+解析完了後にvLabelerで編集を続けるか確認します。「はい」を選ぶと、vLabelerを起動して生成した `oto.ini` を開きます。初回、または登録済みの場所からvLabelerが見つからない場合は、Windowsでは `vLabeler.exe`、macOSでは `vLabeler.app` を選択してください。選択した場所は次回のために保存されます。
+
+AutotoはvLabelerのHeartbeat通信で起動状態と応答を確認します。vLabelerが起動していなければ起動を試み、応答後に音源フォルダーと生成した原音設定を開く要求を送ります。ここでのHeartbeatはアプリ間の応答確認に使う機能で、再生位置への追従機能ではありません。vLabeler本体はAutotoに同梱されません。
+
 ## `oto.ini` の保存とバックアップ
 
 - `oto.ini` がまだない場合は、新しく作成します。
