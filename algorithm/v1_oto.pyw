@@ -47,7 +47,16 @@ if getattr(sys, 'frozen', False):
     CFunc.enable_caching = lambda self: None
     UFuncDispatcher.enable_caching = lambda self: None
 
-from utau_oto.v1_ui import main
+    from utau_oto.v1_ui import main
+
+if getattr(sys, 'frozen', False):
+    _app_name = Path(sys.executable).name
+    if _app_name == 'Autoto-CUDA.exe':
+        os.environ.setdefault('AUTOTO_DEVICE', 'cuda')
+    elif _app_name == 'Autoto-CPU.exe':
+        os.environ.setdefault('AUTOTO_DEVICE', 'cpu')
+    elif _app_name == 'Autoto.app':
+        os.environ.setdefault('AUTOTO_DEVICE', 'cpu')
 
 if __name__ == '__main__':
     if len(sys.argv)>=3 and sys.argv[1] in ('--self-test','--self-test-cuda'):

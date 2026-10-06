@@ -8,6 +8,7 @@ import sys
 import numpy as np
 from . import __version__
 from .audio import read_wav
+from .audio import normalization_notice
 from .names import parse_name
 from .features import Backend,extract
 from .analysis import analyze
@@ -21,8 +22,8 @@ def main(argv=None):
     p=argparse.ArgumentParser(description='UTAU原音設定 コアβ（フォルダ直下・再帰なし）')
     p.add_argument('folder',type=Path)
     p.add_argument('--device',choices=('auto','cuda','cpu'),default=default_device())
-    p.add_argument('--output',type=Path,help='既定: 入力フォルダ内の推定後_oto.ini')
-    p.add_argument('--overwrite',action='store_true',help='Overwrite an existing estimated oto file')
+    p.add_argument('--output',type=Path,help='既定: 入力フォルダ内のoto.ini')
+    p.add_argument('--overwrite',action='store_true',help='Allow replacing the existing oto.ini')
     p.add_argument('--save-features',action='store_true',help=argparse.SUPPRESS)
     p.add_argument('--name-map',type=Path,help='UTF-8 JSON: WAV名と録音かな列の対応')
     p.add_argument('--fmin',type=float,default=65.)
@@ -48,13 +49,15 @@ def main(argv=None):
         config=AnalysisConfig(fmin=args.fmin,fmax=args.fmax);config.validate()
         files=sorted((x for x in folder.iterdir() if x.is_file() and x.suffix.lower()=='.wav'),key=lambda x:x.name)
         if not files: raise ValueError('フォルダ直下にWAVがありません')
-        output=args.output.absolute() if args.output else folder/'推定後_oto.ini'
+        output=args.output.absolute() if args.output else folder/'oto.ini'
         if output.suffix.lower()!='.ini' or output.name in ('oto_backup.ini','推定後_oto_backup.ini'):
             raise ValueError('出力先はバックアップ名以外の.iniを指定してください')
         if output.is_symlink() or output.resolve().is_relative_to((folder/'キャッシュ').resolve()):
             raise ValueError('リンク先やキャッシュ内には原音設定を保存できません')
-        if output.name=='oto.ini':
-            raise ValueError('oto.ini cannot be used as an output path; use 推定後_oto.ini instead')
+        if output.name == 'oto.ini' and output.parent.resolve() == folder:
+            initial_oto=hashlib.sha256(output.read_bytes()).hexdigest() if output.exists() else None
+        else:
+            initial_oto=None
         if output.exists() and not args.overwrite:
             raise FileExistsError(f'{output.name} already exists; pass --overwrite to replace it')
         mapping=json.loads(args.name_map.read_text(encoding='utf-8-sig')) if args.name_map else {}
@@ -62,6 +65,12 @@ def main(argv=None):
             raise ValueError('name-map はWAV名と読みの辞書が必要です')
         backend=Backend(args.device)
         print(f'解析デバイス: {backend.device}'+(f' / {backend.reason}' if backend.reason else ''))
+        conversions=[]
+        for wav in files:
+            change=normalization_notice(wav)
+            if change:conversions.append(f'{wav.name}: {change}')
+        if conversions:
+            print('入力WAVは解析用に変換します（元ファイルは変更しません）:\n'+'\n'.join(conversions),file=sys.stderr)
         build=CacheBuild(folder)
         reports=[];errors=[];entries=[];log=[]
         # Short two-mora recordings cannot resolve their own tempo. Use only
@@ -133,7 +142,11 @@ def main(argv=None):
         (build.stage/'解析結果.json').write_text(json.dumps(document,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
         (build.stage/'推定理由.log').write_text('\n'.join(log),encoding='utf-8')
         build.finish(dict(algorithm_version=__version__,settings=asdict(config)))
-        if entries: write_oto(output,serialize(entries))
+        if entries:
+            if output.name == 'oto.ini' and output.parent.resolve() == folder:
+                current=hashlib.sha256(output.read_bytes()).hexdigest() if output.exists() else None
+                if current!=initial_oto:raise RuntimeError('oto.ini changed during analysis; refusing to overwrite it')
+            write_oto(output,serialize(entries))
         build.publish()
         print(f'キャッシュ: {folder/"キャッシュ"}')
         if entries: print(f'保存: {output} / {len(entries)}候補')

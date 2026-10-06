@@ -19,7 +19,7 @@ METHODS=(
     ('vision','2. スペクトログラム画像認識','スペクトログラムをCNNで画像解析し、学習した境界パターンから先行発声位置を推定します。'),
     ('alignment','3. 音素位置解析','音声の特徴変化を音素列と照合し、発音中の各音素の位置を推定して原音設定の境界を決定します。'),
 )
-STEPS=('WAV読込中','特徴抽出中','境界解析中','統合中','推定後_oto.ini生成中')
+STEPS=('WAV読込中','特徴抽出中','境界解析中','統合中','oto.ini生成中')
 
 
 def system_light():
@@ -147,12 +147,12 @@ class App:
         methods=tuple(k for k,flag in self.flags.items() if flag.get())
         if not methods:
             messagebox.showwarning('解析方式を選択','解析方式を1つ以上選択してください。',parent=self.root);return
-        try:existing=(self.folder/'推定後_oto.ini').exists()
+        try:existing=(self.folder/'oto.ini').exists()
         except (ValueError,OSError) as error:
             messagebox.showerror('oto.iniを確認',str(error),parent=self.root);return
         overwrite=False
         if existing:
-            choice=messagebox.askyesnocancel('既存の推定結果','既存の推定後_oto.iniを上書きしますか？\n上書き前のファイルは推定後_oto_backup.iniへ退避します。',parent=self.root)
+            choice=messagebox.askyesnocancel('既存の原音設定','既存のoto.iniを上書きしますか？\n上書き前のファイルはoto_backup.iniへ退避します。',parent=self.root)
             if choice is not True:return
             overwrite=True
         self._progress(methods,overwrite,existing)
@@ -197,10 +197,6 @@ class App:
             self.events.put(event)
         def worker():
             try:
-                if device=='cuda':
-                    from .features import Backend
-                    backend=Backend('cuda')
-                    log.write(f'CUDA動作確認：{backend.backend_name}（画像モデルはCPU実行の場合あり）')
                 result=generate(self.folder,methods,overwrite,progress,self.cancel,device=device)
                 log.write(f'生成完了：{result.path} / {result.entries}設定')
                 self.events.put(('done',result))
@@ -214,6 +210,13 @@ class App:
                 try:event=self.events.get_nowait()
                 except queue.Empty:break
                 if isinstance(event,tuple):
+                    if event[0]=='notice':
+                        title,body=event[1].split(':',1) if ':' in event[1] else ('info',event[1])
+                        messagebox.showinfo('CUDA利用の通知' if title=='device' else '入力音声の変換通知',body.strip(),parent=self.root)
+                        continue
+                    if event[0]=='device':
+                        self.actual_device=event[1]
+                        continue
                     self.start['state']='normal';self.clear_button['state']='normal';cancel_button['state']='disabled';window.destroy()
                     if event[0]=='error':
                         error=event[1]
@@ -221,6 +224,11 @@ class App:
                         else:messagebox.showerror('解析できませんでした',str(error),parent=self.root)
                     else:self._finish(event[1])
                     return
+                if event.get('notice'):
+                    messagebox.showinfo('CUDA利用の通知',event['notice'],parent=self.root)
+                if event.get('device'):
+                    log.write(f"実行デバイス:{event['device']}")
+                    self.events.put(('device',event['device']))
                 if 'phase' in event:heading.set(event['phase'])
                 if 'step' in event:
                     step=event['step'];heading.set(step)
@@ -242,9 +250,10 @@ class App:
     def _finish(self,result):
         details=(f'既存oto.ini：{"あり" if result.source_had_oto else "なし"}\n'
                  f'保存方法：{"推定結果を上書き" if result.overwritten else "新規作成"}\n'
+                 f'実行デバイス：{getattr(self,"actual_device",result.device).upper()}\n'
                  f'保存先：{result.path}\n'
                  f'設定数：{result.entries}\n'
-                 f'推定後_oto_backup.ini：{"新規作成" if result.backup_created else "既存のものを保持" if result.overwritten else "作成なし"}')
+                 f'oto_backup.ini：{"新規作成" if result.backup_created else "既存のものを保持" if result.overwritten else "作成なし"}')
         messagebox.showinfo('原音設定を生成しました',details,parent=self.root)
         if messagebox.askyesno('vLabeler','vLabelerで編集を続けますか？',parent=self.root):
             executable=saved_executable()

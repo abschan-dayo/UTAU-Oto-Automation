@@ -18,6 +18,7 @@ class SaveResult:
     path: Path
     backup_created: bool
     entries: int
+    device: str = 'cpu'
 
 
 def check_folder(folder):
@@ -85,14 +86,14 @@ def save_oto(folder,data,initial_state,overwrite):
     source=folder/'oto.ini'
     if oto_state(folder)!=initial_state:
         raise RuntimeError('解析中に既存のoto.iniが変わりました。保存せずに中止します。')
-    target=folder/'推定後_oto.ini'
-    if target.is_symlink():raise ValueError('リンク先の推定結果は変更できません。')
-    if target.exists() and not target.is_file():raise ValueError('推定後_oto.iniが通常のファイルではありません。')
+    target=source
+    if target.is_symlink():raise ValueError('シンボリックリンクのoto.iniは変更できません。')
+    if target.exists() and not target.is_file():raise ValueError('oto.iniが通常のファイルではありません。')
     if target.exists() and not overwrite:
-        raise FileExistsError('推定後_oto.iniが既にあります。上書きするか、先に別の場所へ移動してください。')
+        raise FileExistsError('既存のoto.iniを上書きするかどうか選んでください。')
     backup_created=False
     if target.exists():
-        backup=folder/'推定後_oto_backup.ini'
+        backup=folder/'oto_backup.ini'
         if not backup.exists() and not backup.is_symlink():
             atomic_write(backup,target.read_bytes())
             backup_created=True
@@ -108,11 +109,13 @@ def generate(folder,methods,overwrite,progress=None,cancel=None,device='auto'):
     if not methods or not set(methods)<={'existing','vision','alignment'}:
         raise ValueError('解析方式を1つ以上選択してください。')
     initial=oto_state(folder)
-    output=folder/'推定後_oto.ini'
+    output=folder/'oto.ini'
+    if output.is_symlink():raise ValueError('シンボリックリンクのoto.iniは変更できません。')
+    if output.exists() and not output.is_file():raise ValueError('oto.iniが通常のファイルではありません。')
     if output.exists() and overwrite is None:
-        raise ValueError('既存の推定後_oto.iniの上書き可否を指定してください。')
+        raise ValueError('既存のoto.iniの上書き可否を指定してください。')
     if output.exists() and not overwrite:
-        raise FileExistsError('推定後_oto.iniを保持するため、解析を中止しました。')
+        raise FileExistsError('oto.iniを保持するため、解析を中止しました。')
     if progress:progress(dict(phase='WAV読込中',done=0,total=len(files)))
     entries,reports=run(folder,device=device,progress=progress,methods=methods,
                         return_data=True,cancel=cancel,
@@ -120,10 +123,11 @@ def generate(folder,methods,overwrite,progress=None,cancel=None,device='auto'):
     if cancel is not None and cancel.is_set():raise InterruptedError('解析を中止しました。')
     failures={method:report['errors'] for method,report in reports.items() if report['errors']}
     if failures:
-        raise RuntimeError('解析できないWAVがあったため、推定後_oto.iniは保存しません。詳細: '+json.dumps(failures,ensure_ascii=False))
+        raise RuntimeError('解析できないWAVがあったため、oto.iniは保存しません。詳細: '+json.dumps(failures,ensure_ascii=False))
     if not entries:raise RuntimeError('原音設定を生成できませんでした。')
     data=serialize(entries)
-    if progress:progress(dict(phase='推定後_oto.ini生成中',done=len(files),total=len(files)))
+    if progress:progress(dict(phase='oto.ini生成中',done=len(files),total=len(files)))
     outcome=save_oto(folder,data,initial,overwrite)
     return SaveResult(outcome.source_had_oto,outcome.overwritten,outcome.path,
-                      outcome.backup_created,len(entries))
+                      outcome.backup_created,len(entries),
+                      next((str(report.get('device','cpu')) for report in reports.values()),'cpu'))

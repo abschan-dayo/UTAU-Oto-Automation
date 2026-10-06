@@ -66,7 +66,7 @@ def variant(entries,predictions):
 
 def output_name(method,selected):
     """Use a distinct name for every generated estimator result."""
-    if len(selected)==1:return '推定後_oto.ini'
+    if len(selected)==1:return 'oto.ini'
     return {'existing':'oto_①既存.ini','vision':'oto_②Vision.ini',
             'alignment':'oto_③Alignment.ini'}[method]
 
@@ -123,8 +123,11 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
     from .. import features as core_features, analysis as core_analysis
     # Initialize the CUDA runtime before estimator threads start. CuPy's first
     # FFT and kernel compilation are not reliable when initialized concurrently.
-    if device != 'cpu':
-        core_features.Backend(device)
+    backend = core_features.Backend(device)
+    if backend.reason:
+        emit(notice='device:'+backend.reason)
+        print(backend.reason, flush=True)
+    device = backend.device
     # Exercise lazy numerical imports once; an existing disk cache would skip
     # that initialization, so deliberately omit cache for this warm-up.
     for wav in sorted(folder.iterdir()):
@@ -135,6 +138,20 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
             except (ValueError,OSError,RuntimeError):
                 continue
     print('選択した方式を解析しています：'+', '.join(methods),flush=True)
+    from ..audio import normalization_notice
+    changes=[]
+    for wav in sorted(folder.iterdir()):
+        if wav.is_file() and wav.suffix.lower()=='.wav':
+            try:
+                change=normalization_notice(wav)
+                if change:changes.append(f'{wav.name}: {change}')
+            except (ValueError,OSError):
+                pass
+    if changes:
+        notice='入力WAVを解析用に44.1 kHz・16 bit相当・Monoへ変換します（元ファイルは変更しません）:\n'+'\n'.join(changes[:20])
+        if len(changes)>20:notice+=f'\nほか {len(changes)-20} 件'
+        emit(notice='audio:'+notice)
+        print(notice.replace('\n',' / '),flush=True)
     with ThreadPoolExecutor(max_workers=3,thread_name_prefix='oto-estimator') as pool:
         emit(phase='境界解析中')
         cache=str(folder/'キャッシュ'/'音響特徴') if cache_enabled else None
@@ -159,7 +176,7 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
                 converted,notes[filename]=variant(rows,collected[method]['results'].get(filename,[]));entries.extend(converted)
         method_entries[method]=entries
         if method in methods:payloads[output_name(method,methods)]=serialize(entries)
-        reports[method]=dict(errors=collected[method]['errors'],pid=collected[method].get('pid'),thread_id=collected[method].get('thread_id'),execution='threads',entries=len(entries),details=notes)
+        reports[method]=dict(errors=collected[method]['errors'],pid=collected[method].get('pid'),thread_id=collected[method].get('thread_id'),execution='threads',entries=len(entries),details=notes,device=device)
     merged=median_variant(method_entries,methods)
     if return_data:
         return merged,reports

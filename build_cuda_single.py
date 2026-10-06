@@ -93,7 +93,7 @@ a.datas = [entry for entry in a.datas if not entry[0].lower().endswith(('.csv', 
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, a.binaries, a.datas, [],
-    name='UTAU原音設定ツール_CUDA',
+    name='Autoto-CUDA',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -30,8 +30,7 @@ def build_model(architecture='legacy'):
     raise ValueError('Unknown vision architecture: '+architecture)
 
 def device_for(requested):
-    if requested=='cuda' and not torch.cuda.is_available():
-        from ..features import Backend
-        if Backend('cuda').cupy is None:raise RuntimeError('CUDA unavailable')
-        return 'cpu'
-    return 'cuda' if requested!='cpu' and torch.cuda.is_available() else 'cpu'
+    # The main analysis backend performs a real CUDA warm-up and records a
+    # fallback reason before estimator threads start. Vision must follow that
+    # resolved device, rather than independently raising on missing CUDA.
+    return 'cuda' if requested == 'cuda' and torch.cuda.is_available() else 'cpu'

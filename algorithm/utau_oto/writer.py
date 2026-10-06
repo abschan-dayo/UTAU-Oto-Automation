@@ -49,8 +49,6 @@ def atomic_write(path: Path, data: bytes, overwrite=False):
 def write_oto(path, data):
     """Keep exactly the previous output, without interpreting any old values."""
     path=Path(path)
-    if path.name=='oto.ini':
-        raise ValueError('oto.ini cannot be used as an output path; use 推定後_oto.ini instead')
     if path.is_symlink():
         raise ValueError('リンク先の原音設定には書き込めません')
     backup=path.with_name('oto_backup.ini' if path.name=='oto.ini' else path.stem+'_backup.ini')

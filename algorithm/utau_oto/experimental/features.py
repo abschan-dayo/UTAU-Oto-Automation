@@ -4,27 +4,16 @@ from pathlib import Path
 import hashlib, io, json
 import librosa
 import numpy as np
-import soundfile as sf
 from ..audio import read_wav
 from ..writer import atomic_write
 
-FEATURE_VERSION=1
+FEATURE_VERSION=2
 def frame_to_ms(frame,config): return np.asarray(frame)*config.hop_length/config.sample_rate*1000
 def ms_to_frame(ms,config): return np.asarray(ms)*config.sample_rate/(1000*config.hop_length)
 
 def read_experimental_wav(path):
-    """Accept a stereo reference only when both PCM channels are bit-identical."""
-    try:
-        return read_wav(path)
-    except ValueError as mono_error:
-        with sf.SoundFile(str(path), 'r') as stream:
-            if ((stream.samplerate,stream.channels,stream.subtype)!=(44100,2,'PCM_16')
-                    or stream.format not in ('WAV','WAVEX')):
-                raise mono_error
-            channels=stream.read(dtype='int16',always_2d=True)
-        if len(channels)<441 or not np.array_equal(channels[:,0],channels[:,1]):
-            raise ValueError('Stereo WAV requires identical left and right channels')
-        return channels[:,0].astype(np.float64)/32768.,44100
+    """Use the common read-only normalization for every estimator."""
+    return read_wav(path)
 
 def extract_features(path,config,cache_dir=None):
     path=Path(path);digest=hashlib.sha256(path.read_bytes()).hexdigest()
@@ -35,7 +24,7 @@ def extract_features(path,config,cache_dir=None):
         try:
             with np.load(cached,allow_pickle=False) as z:return {k:z[k] for k in z.files}
         except (ValueError,OSError): pass
-    x,sr=read_experimental_wav(path)
+    x,sr=read_wav(path)
     if sr!=config.sample_rate:raise ValueError('Sample rate does not match model config')
     spectrum=abs(librosa.stft(x,n_fft=config.n_fft,hop_length=config.hop_length,center=True))**2
     mel=librosa.feature.melspectrogram(S=spectrum,sr=sr,n_fft=config.n_fft,n_mels=config.n_mels,fmin=config.fmin,fmax=config.fmax)

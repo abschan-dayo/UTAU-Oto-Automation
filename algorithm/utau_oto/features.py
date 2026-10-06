@@ -35,9 +35,7 @@ class Backend:
                     self.device = 'cuda'
                     self.backend_name = f'PyTorch {torch.__version__}'
                 except (ImportError, OSError, RuntimeError) as torch_error:
-                    if requested == 'cuda':
-                        raise RuntimeError(f'CUDA指定に失敗: CuPy={cupy_error}; PyTorch={torch_error}') from torch_error
-                    self.reason = f'CPUにフォールバック: CuPy={cupy_error}; PyTorch={torch_error}'
+                    self.reason = f'CUDA unavailable; using CPU: {cupy_error}; {torch_error}'
 
     def spectrum(self, frames, n=None):
         if self.cupy is not None:
