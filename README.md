@@ -6,7 +6,7 @@ WAVからUTAU音源の原音設定を自動推定します。推定結果は音�
 
 配布ファイルは[GitHub Releases](https://github.com/abschan-dayo/UTAU-Oto-Automation/releases)から取得してください。
 
-- **Windows CPU版**: `Autoto-CPU.exe`。CPUで動作する単体版です。
+- **Windows CPU版**: `Autoto-CPU.exe`。CPUで動作します。
 - **Windows CUDA版**: `Autoto-CUDA.exe`。対応するNVIDIA GPUとドライバーがある場合にGPUを使います。CUDAが利用できない場合は通知を出してCPUに切り替えます。
 - **macOS版**: `Autoto.dmg`。Apple Silicon（arm64）専用です。Intel Macには対応していません。
 
@@ -40,7 +40,7 @@ Developer ID署名とApple公証は未実施です。macOSのセキュリティ�
 
 ## 動作確認と注意
 
-- Windows CUDA版はRTX 3080で動作確認済みです。RTX 5060（Blackwell）を含むほかのGPU構成は未確認です。
+- Windows CUDA版はAmpere世代のGPUで動作確認済みです。Blackwell世代を含むほかのGPU構成は未確認です。
 - macOS版はApple Silicon向けです。macOS 26.6.1でDMGの検証・マウントと解析処理を確認しました。GUI画面の操作確認は未実施です。
 - 画面に表示する信頼度は推定の曖昧さを示す参考値で、正解率ではありません。生成結果を必ず確認してください。
 - これはベータ版です。OSやGPU、ドライバーによって動作が異なる場合があります。
