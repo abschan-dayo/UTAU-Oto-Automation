@@ -5,13 +5,13 @@ import queue
 import subprocess
 import sys
 import threading
-import traceback
 import tkinter as tk
 from tkinter import ttk,filedialog,messagebox
 
-from .v1_service import check_folder,clear_analysis_cache,generate,oto_state
+from . import __version__ as ALGORITHM_VERSION
+from .v1_service import check_folder,clear_analysis_cache,generate,oto_state,planned_output_path
 from .vlabeler import saved_executable,save_executable,open_in_vlabeler
-from .runtime import default_device
+from .runtime import default_device,distribution_info,VERSION
 from .v1_log import OperationLog
 
 METHODS=(
@@ -19,7 +19,7 @@ METHODS=(
     ('vision','2. スペクトログラム画像認識','スペクトログラムをCNNで画像解析し、学習した境界パターンから先行発声位置を推定します。'),
     ('alignment','3. 音素位置解析','音声の特徴変化を音素列と照合し、発音中の各音素の位置を推定して原音設定の境界を決定します。'),
 )
-STEPS=('WAV読込中','特徴抽出中','境界解析中','統合中','oto.ini生成中')
+STEPS=('WAV読込・特徴抽出・境界解析','統合','oto.ini保存')
 
 
 def system_light():
@@ -62,17 +62,24 @@ def apply_theme(root):
 class App:
     def __init__(self,root,initial=None):
         self.root=root;self.folder=None;self.cancel=threading.Event();self.events=queue.Queue();self.log_path=None
-        root.title('UTAU原音設定自動化ツール');root.geometry('760x510');root.minsize(650,470)
+        self._progress_detail_vars=()
+        root.title('UTAU原音設定自動化ツール');root.geometry('760x610');root.minsize(700,600)
         self.bg,self.fg,self.card,self.accent=apply_theme(root)
         self.theme_is_light=system_light();self.progress_window=None
         body=ttk.Frame(root,padding=24);body.pack(fill='both',expand=True)
-        ttk.Label(body,text='原音設定を生成',style='Title.TLabel').pack(anchor='w')
+        header=ttk.Frame(body);header.pack(fill='x')
+        ttk.Label(header,text='原音設定を生成',style='Title.TLabel').pack(side='left')
+        version_box=ttk.Frame(header);version_box.pack(side='right',anchor='e')
+        ttk.Label(version_box,text=f'本体バージョン：{VERSION}').pack(anchor='e')
+        ttk.Label(version_box,text=f'アルゴリズムバージョン：{ALGORITHM_VERSION}').pack(anchor='e')
         self.folder_text=tk.StringVar(value='WAVが入った音階フォルダを選択してください')
         path_row=ttk.Frame(body);path_row.pack(fill='x',pady=(18,14))
         ttk.Label(path_row,textvariable=self.folder_text,wraplength=570).pack(side='left',fill='x',expand=True)
         ttk.Button(path_row,text='フォルダを選択',command=self.pick_folder).pack(side='right')
-        self.drop=ttk.Label(body,text='フォルダをここへドラッグ＆ドロップ',anchor='center')
-        self.drop.pack(fill='x',ipady=15,pady=(0,14))
+        drop_card=ttk.Frame(body,style='Card.TFrame',padding=12);drop_card.pack(fill='x',pady=(0,14))
+        ttk.Label(drop_card,text='音源フォルダのドロップ先',style='Card.TLabel').pack(anchor='w')
+        self.drop=ttk.Label(drop_card,text='WAVが入った音階フォルダを、この枠内へドラッグ＆ドロップ',anchor='center',relief='solid')
+        self.drop.pack(fill='x',ipady=18,pady=(8,0))
         self._drop_support()
         ttk.Label(body,text='解析方式を選択').pack(anchor='w',pady=(0,8))
         self.flags={}
@@ -87,6 +94,7 @@ class App:
         ttk.Button(row,text='ログを開く',command=self.open_log).pack(side='left',padx=(8,0))
         self.start=ttk.Button(row,text='解析を開始',command=self.start_analysis)
         self.start.pack(side='right')
+        ttk.Label(body,text='ログ保存先：音源フォルダ内の「キャッシュ / ログ」').pack(anchor='w',pady=(10,0))
         if initial:self.set_folder(initial)
         root.after(3000,self._refresh_theme)
 
@@ -122,14 +130,13 @@ class App:
         if not messagebox.askyesno('キャッシュを削除',
                 '選択した音源フォルダの再生成可能な解析キャッシュを削除しますか？\nWAVとoto.iniは変更しません。',parent=self.root):return
         try:
-            log=OperationLog('キャッシュ削除');self.log_path=log.path
-            log.write(f'音源フォルダ：{self.folder}')
+            log=OperationLog('キャッシュ削除',self.folder);self.log_path=log.path
             removed=clear_analysis_cache(self.folder)
             log.write('結果：キャッシュを削除しました。' if removed else '結果：削除するキャッシュはありません。')
             messagebox.showinfo('キャッシュ削除',
                                 'キャッシュを削除しました。' if removed else '削除するキャッシュはありません。',parent=self.root)
         except Exception as error:
-            if 'log' in locals():log.write(f'失敗：{error}')
+            if 'log' in locals():log.write('失敗：'+type(error).__name__+'（詳細は画面に表示）')
             messagebox.showerror('キャッシュを削除できません',str(error),parent=self.root)
 
     def open_log(self):
@@ -147,32 +154,66 @@ class App:
         methods=tuple(k for k,flag in self.flags.items() if flag.get())
         if not methods:
             messagebox.showwarning('解析方式を選択','解析方式を1つ以上選択してください。',parent=self.root);return
+        normalize_choice=messagebox.askyesnocancel(
+            '入力WAVの扱い',
+            '解析時のWAVの扱いを選択してください。\n\n'
+            'はい：44.1kHz / 16bit / Monoにメモリ上で変換して解析します。\n'
+            'いいえ：WAVファイルを変換せずに解析します。モデル方式では必要な内部処理を行います。\n\n'
+            'どちらを選んでもoto.iniを生成できます。元のWAVファイルは変更しません。',
+            parent=self.root)
+        if normalize_choice is None:return
+        normalize_audio=bool(normalize_choice)
         try:existing=(self.folder/'oto.ini').exists()
         except (ValueError,OSError) as error:
             messagebox.showerror('oto.iniを確認',str(error),parent=self.root);return
         overwrite=False
         if existing:
-            choice=messagebox.askyesnocancel('既存の原音設定','既存のoto.iniを上書きしますか？\n上書き前のファイルはoto_backup.iniへ退避します。',parent=self.root)
-            if choice is not True:return
-            overwrite=True
-        self._progress(methods,overwrite,existing)
+            choice=messagebox.askyesnocancel('既存の原音設定','既存のoto.iniを上書きしますか？\nはい：oto_backup.iniへ退避して上書きします。\nいいえ：解析して、音源フォルダの親に新しい「生成済み」フォルダを作り保存します。\nキャンセル：解析しません。',parent=self.root)
+            if choice is None:return
+            overwrite=choice
+        self._progress(methods,overwrite,existing,normalize_audio)
 
-    def _progress(self,methods,overwrite,existing):
-        window=tk.Toplevel(self.root);window.title('原音設定を生成しています');window.geometry('680x470')
+    def _progress(self,methods,overwrite,existing,normalize_audio=True):
+        window=tk.Toplevel(self.root);window.title('原音設定を生成しています');window.geometry('700x570')
         self.progress_window=window
         window.transient(self.root);window.grab_set();apply_theme(window)
         body=ttk.Frame(window,padding=24);body.pack(fill='both',expand=True)
-        heading=tk.StringVar(value='WAV読込中')
+        heading=tk.StringVar(value='WAVを解析しています')
         ttk.Label(body,textvariable=heading,style='Title.TLabel').pack(anchor='w')
         percent=tk.StringVar(value='0%')
         ttk.Label(body,textvariable=percent).pack(anchor='e')
         bar=ttk.Progressbar(body,maximum=100);bar.pack(fill='x',pady=(4,18))
+        try:total_wavs=sum(1 for path in self.folder.iterdir() if path.is_file() and path.suffix.lower()=='.wav')
+        except OSError:total_wavs=0
+        method_names='、'.join(title.split('. ',1)[-1] for key,title,_ in METHODS if key in methods)
+        try:planned_path=planned_output_path(self.folder,overwrite,existing)
+        except (OSError,ValueError) as error:
+            window.destroy();self.start['state']='normal';self.clear_button['state']='normal'
+            messagebox.showerror('保存先を確認できません',str(error),parent=self.root);return
+        input_count=tk.StringVar(value=f'総入力WAV数：{total_wavs} 件')
+        selected_methods=tk.StringVar(value=f'解析方法：{method_names}')
+        source_formats=tk.StringVar(value='元の音声形式：読み取り中')
+        output_destination=tk.StringVar(value=f'oto.ini生成予定先：{planned_path}')
+        self._progress_detail_vars=(input_count,selected_methods,source_formats,output_destination)
+        for detail in self._progress_detail_vars:
+            ttk.Label(body,textvariable=detail,wraplength=650,justify='left').pack(anchor='w',pady=2)
         current=tk.StringVar(value='準備中')
-        ttk.Label(body,textvariable=current,wraplength=620).pack(anchor='w')
+        ttk.Label(body,textvariable=current,wraplength=650).pack(anchor='w',pady=(8,0))
+        ttk.Label(body,text='WAVごとに読込・特徴抽出・境界解析を行います。全方式の完了後に緑の✓になります。',wraplength=620).pack(anchor='w',pady=(8,4))
         steps={}
         for step in STEPS:
-            var=tk.StringVar(value='○ '+step.replace('中',''))
-            ttk.Label(body,textvariable=var).pack(anchor='w',pady=4);steps[step]=var
+            var=tk.StringVar(value='○ '+step)
+            label=ttk.Label(body,textvariable=var);label.pack(anchor='w',pady=4)
+            steps[step]=(var,label)
+        stage=0
+        def show_stage(index,complete=False):
+            nonlocal stage
+            stage=max(stage,index)
+            for i,(step,(var,label)) in enumerate(steps.items()):
+                done=i<stage or complete
+                var.set(('✓ ' if done else '● ' if i==stage else '○ ')+step)
+                label.configure(foreground='#238636' if done else self.accent if i==stage else self.fg)
+        show_stage(0)
         count=tk.StringVar(value='処理済みWAV 0 / 0')
         ttk.Label(body,textvariable=count).pack(anchor='w',pady=(14,4))
         active=tk.StringVar(value='使用中の解析方式：準備中')
@@ -183,26 +224,47 @@ class App:
         workers=('existing',)+tuple(m for m in methods if m!='existing')
         totals={m:(0,0,'') for m in workers}
         try:
-            log=OperationLog('原音設定生成');self.log_path=log.path
+            log=OperationLog('原音設定生成',self.folder);self.log_path=log.path
             device=default_device()
-            log.write(f'音源フォルダ：{self.folder}')
+            self.actual_device=None
+            info=distribution_info()
+            log.write(f'アプリ版：{info["version"]} / ビルド：{info["build"]} / 配布区分：{info["profile"]}')
             log.write('解析方式：'+', '.join(methods))
+            log.write('WAV入力モード：'+('44.1kHz / 16bit / Monoへ内部変換' if normalize_audio else '入力WAVを変換せずに解析（モデル方式の内部処理を除く）'))
             log.write('解析デバイス指定：'+device.upper())
         except Exception as error:
             self.start['state']='normal';self.clear_button['state']='normal';window.destroy()
             messagebox.showerror('ログを作成できません',str(error),parent=self.root);return
         def progress(event):
-            if 'phase' in event:log.write('進捗：'+str(event['phase']))
-            if event.get('message'):log.write(str(event.get('method','解析'))+'：'+str(event['message']))
+            kind=event.get('diagnostic')
+            if kind=='backend':
+                log.write(f'音響解析：{event["device"].upper()} / {event["backend"]} / GPU：{event["gpu"]}')
+                if event.get('fallback_reason'):log.write('CPU切替理由：'+str(event['fallback_reason']))
+            elif kind=='audio':
+                log.write('入力形式：'+', '.join(f'{fmt}={count}件' for fmt,count in event['formats'].items()))
+                log.write('WAV変換モード：'+('標準形式へ内部変換' if event.get('normalize_audio',True) else '入力形式を維持（モデルに必要な内部処理あり）'))
+                if event.get('normalize_audio',True):
+                    log.write(f'標準形式への変換対象：{event["converted"]}件')
+                log.write(f'読込不可：{event["unreadable"]}件')
+            elif kind=='worker':
+                log.write(f'{event["method"]}：成功{event["success"]}件 / 失敗{event["failed"]}件 / スキップ{event["skipped"]}件 / '
+                          f'実行先{event["device"]}（{event["backend"]}） / {event["elapsed_s"]}秒')
+                if event['error_reasons']:
+                    log.write('失敗の分類：'+', '.join(f'{reason}={count}件' for reason,count in event['error_reasons'].items()))
+            elif kind=='method':
+                reasons=event['fallback_reasons']
+                log.write(f'{event["method"]}：採用{event["adopted"]}設定 / '
+                          f'音響解析値の代用{sum(reasons.values())}設定 / '
+                          +('理由：'+', '.join(f'{reason}={count}件' for reason,count in reasons.items()) if reasons else '代用なし'))
             self.events.put(event)
         def worker():
             try:
-                result=generate(self.folder,methods,overwrite,progress,self.cancel,device=device)
-                log.write(f'生成完了：{result.path} / {result.entries}設定')
+                result=generate(self.folder,methods,overwrite,progress,self.cancel,device=device,
+                                normalize_audio=normalize_audio,planned_path=planned_path)
+                log.write(f'生成完了：{result.entries}設定')
                 self.events.put(('done',result))
             except Exception as error:
-                log.write('失敗：'+str(error))
-                log.write(traceback.format_exc())
+                log.write('失敗：'+type(error).__name__+'（詳細は画面に表示。例外本文とトレースバックは記録しません）')
                 self.events.put(('error',error))
         thread=threading.Thread(target=worker,daemon=False);thread.start()
         def poll():
@@ -217,22 +279,34 @@ class App:
                     if event[0]=='device':
                         self.actual_device=event[1]
                         continue
-                    self.start['state']='normal';self.clear_button['state']='normal';cancel_button['state']='disabled';window.destroy()
+                    self.start['state']='normal';self.clear_button['state']='normal';cancel_button['state']='disabled'
                     if event[0]=='error':
+                        window.destroy()
                         error=event[1]
                         if isinstance(error,InterruptedError):messagebox.showinfo('解析を中止','既存の原音設定は変更していません。',parent=self.root)
                         else:messagebox.showerror('解析できませんでした',str(error),parent=self.root)
-                    else:self._finish(event[1])
+                    else:
+                        show_stage(2,complete=True);bar['value']=100;percent.set('100%')
+                        heading.set('原音設定を保存しました')
+                        cancel_button.configure(text='結果を確認',state='normal',command=lambda result=event[1]:(window.destroy(),self._finish(result)))
+                        window.protocol('WM_DELETE_WINDOW',cancel_button.invoke)
                     return
                 if event.get('notice'):
-                    messagebox.showinfo('CUDA利用の通知',event['notice'],parent=self.root)
-                if event.get('device'):
+                    kind,_,notice=event['notice'].partition(':')
+                    title={'device':'CUDA利用の通知','audio':'入力音声の変換通知','credit':'クレジット案内'}.get(kind,'通知')
+                    messagebox.showinfo(title,notice or event['notice'],parent=window)
+                if event.get('diagnostic')=='backend':
+                    self.actual_device=event['device']
+                elif event.get('diagnostic')=='audio':
+                    formats=event.get('formats',{})
+                    source_formats.set('元の音声形式：'+('、'.join(f'{fmt}（{count}件）' for fmt,count in formats.items()) or '形式を取得できませんでした'))
+                if event.get('device') and event.get('diagnostic') is None:
                     log.write(f"実行デバイス:{event['device']}")
                     self.events.put(('device',event['device']))
-                if 'phase' in event:heading.set(event['phase'])
-                if 'step' in event:
-                    step=event['step'];heading.set(step)
-                    for item,var in steps.items():var.set(('● ' if item==step else '○ ')+item.replace('中',''))
+                if event.get('phase')=='統合中':
+                    show_stage(1);heading.set('推定結果を統合しています')
+                elif event.get('phase')=='oto.ini生成中':
+                    show_stage(2);heading.set('oto.iniを保存しています')
                 method=event.get('method')
                 if method in totals:
                     totals[method]=(event.get('done',totals[method][0]),event.get('total',totals[method][1]),event.get('message',''))
@@ -250,7 +324,7 @@ class App:
     def _finish(self,result):
         details=(f'既存oto.ini：{"あり" if result.source_had_oto else "なし"}\n'
                  f'保存方法：{"推定結果を上書き" if result.overwritten else "新規作成"}\n'
-                 f'実行デバイス：{getattr(self,"actual_device",result.device).upper()}\n'
+                 f'実行デバイス：{(getattr(self,"actual_device",None) or result.device).upper()}\n'
                  f'保存先：{result.path}\n'
                  f'設定数：{result.entries}\n'
                  f'oto_backup.ini：{"新規作成" if result.backup_created else "既存のものを保持" if result.overwritten else "作成なし"}')

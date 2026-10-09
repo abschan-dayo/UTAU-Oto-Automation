@@ -26,9 +26,10 @@ def validate(folder):
     if _linked(target) or not target.is_dir():
         raise ValueError('キャッシュが通常のフォルダではありません')
     marker=target/MARKER
-    if not marker.is_file() or _linked(marker):
+    logs_only=not marker.exists() and all(p.name=='ログ' for p in target.iterdir())
+    if not logs_only and (not marker.is_file() or _linked(marker)):
         raise ValueError('既存の「キャッシュ」は本ツール管理外です。別の場所へ移してから再実行してください')
-    info=json.loads(marker.read_text(encoding='utf-8'))
+    info={'kind':MAGIC,'files':[]} if logs_only else json.loads(marker.read_text(encoding='utf-8'))
     if info.get('kind')!=MAGIC or not isinstance(info.get('files'),list):
         raise ValueError('キャッシュ管理情報が不正です')
     actual=[]
@@ -40,6 +41,11 @@ def validate(folder):
             p=Path(base)/name
             if p.suffix.lower() in ('.wav','.ini'):
                 raise ValueError('キャッシュ内に保護対象ファイルがあります')
+            relative=p.relative_to(target).parts
+            if relative[0]=='ログ':
+                if len(relative)!=2 or p.suffix.lower()!='.log':
+                    raise ValueError('ログ保存先に管理外ファイルがあります')
+                continue
             if p!=marker: actual.append(p.relative_to(target).as_posix())
     # Missing generated files are harmless; newly added files are never erased.
     if not set(actual).issubset(set(info['files'])):
@@ -49,7 +55,12 @@ def validate(folder):
 
 def clear(folder):
     target=validate(folder)
-    if target.exists(): _remove_owned(target,Path(folder))
+    if target.exists():
+        for child in target.iterdir():
+            if child.name=='ログ':continue
+            if child.is_dir():_remove_owned(child,target)
+            else:child.unlink()
+        if not any(target.iterdir()):target.rmdir()
 
 
 class CacheBuild:
@@ -66,6 +77,9 @@ class CacheBuild:
     def publish(self):
         # Validate again in case the user added a file during analysis.
         validate(self.target.parent)
+        logs=self.target/'ログ'
+        if logs.is_dir():
+            shutil.copytree(logs,self.stage/'ログ',dirs_exist_ok=True)
         old=None
         if self.target.exists():
             old=Path(tempfile.mkdtemp(prefix='.auto_oto-old-cache-',dir=self.target.parent))

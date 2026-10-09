@@ -2,11 +2,13 @@
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import threading,json,argparse,os,statistics
+import time
 from datetime import datetime
 from collections import Counter
 from ..writer import serialize,write_oto,atomic_write
 
-def worker(method,folder,device,model,cache,progress=None,cancel=None):
+def worker(method,folder,device,model,cache,progress=None,cancel=None,normalize_audio=True):
+    started=time.monotonic()
     def emit(**event):
         if progress:progress(dict(method=method,**event))
     files=sorted((p for p in Path(folder).iterdir() if p.is_file() and p.suffix.lower()=='.wav'),key=lambda p:p.name)
@@ -14,15 +16,21 @@ def worker(method,folder,device,model,cache,progress=None,cancel=None):
     from ..names import parse_name,aliases
     if method=='existing':
         from .existing_adapter import ExistingAdapter
-        estimator=ExistingAdapter(folder,device,cache_enabled=cache is not None)
+        estimator=ExistingAdapter(folder,device,cache_enabled=cache is not None,normalize_audio=normalize_audio)
+        actual_device=estimator.backend.device
+        backend_name=estimator.backend.backend_name
     else:
         from .features import extract_features
         if method=='vision':
             from .vision_estimator import VisionEstimator
             estimator=VisionEstimator(model,device)
+            actual_device=estimator.device if not estimator.error else 'unavailable'
+            backend_name='PyTorch' if not estimator.error else 'unavailable'
         else:
             from .alignment import AlignmentEstimator
             estimator=AlignmentEstimator(model)
+            actual_device='cpu'
+            backend_name='NumPy'
     results={};errors={}
     for index,path in enumerate(files):
         if cancel is not None and cancel.is_set():break
@@ -34,7 +42,8 @@ def worker(method,folder,device,model,cache,progress=None,cancel=None):
             else:
                 if estimator.error:raise ValueError(estimator.error)
                 emit(done=index,total=len(files),message=path.name,step='特徴抽出中')
-                features=extract_features(path,estimator.config.features,Path(cache)/method if cache else None)
+                features=extract_features(path,estimator.config.features,Path(cache)/method if cache else None,
+                                          normalize_audio=normalize_audio)
                 emit(done=index,total=len(files),message=path.name,step='境界解析中')
                 seen=Counter();rows=[]
                 for _,alias in aliases(parse_name(path.name)):
@@ -43,7 +52,20 @@ def worker(method,folder,device,model,cache,progress=None,cancel=None):
                 results[path.name]=rows
         except Exception as e:errors[path.name]=str(e)
         emit(done=index+1,total=len(files),message=path.name,errors=len(errors))
-    return dict(results=results,errors=errors,pid=os.getpid(),thread_id=threading.get_ident())
+    return dict(results=results,errors=errors,pid=os.getpid(),thread_id=threading.get_ident(),
+                device=actual_device,backend=backend_name,elapsed_s=round(time.monotonic()-started,2),
+                processed=len(results)+len(errors))
+
+
+def error_category(message):
+    value=str(message).lower()
+    if '標準外wav' in value or 'pcm' in value or 'sample rate' in value:
+        return '入力形式'
+    if 'wav' in value or 'audio' in value or 'soundfile' in value:
+        return '音声の読み込み・解析'
+    if 'model' in value or 'template' in value or 'checkpoint' in value:
+        return 'モデル・テンプレート'
+    return 'その他'
 
 def variant(entries,predictions):
     """Preserve other parameters; reject unsafe replacements explicitly."""
@@ -97,7 +119,7 @@ def new_result_folder(folder):
     raise FileExistsError('結果フォルダの名前を確保できませんでした')
 
 def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=None,
-        return_data=False,cancel=None,cache_enabled=True):
+        return_data=False,cancel=None,cache_enabled=True,normalize_audio=True):
     methods=tuple(methods or ('existing','vision','alignment'))
     if not methods or not set(methods)<= {'existing','vision','alignment'}:raise ValueError('Unknown method')
     def emit(**event):
@@ -124,6 +146,8 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
     # Initialize the CUDA runtime before estimator threads start. CuPy's first
     # FFT and kernel compilation are not reliable when initialized concurrently.
     backend = core_features.Backend(device)
+    emit(diagnostic='backend',device=backend.device,backend=backend.backend_name,
+         gpu=backend.gpu_name or '使用なし',fallback_reason=backend.reason)
     if backend.reason:
         emit(notice='device:'+backend.reason)
         print(backend.reason, flush=True)
@@ -133,20 +157,25 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
     for wav in sorted(folder.iterdir()):
         if wav.is_file() and wav.suffix.lower()=='.wav':
             try:
-                extract_features(wav,Config().features,None)
+                extract_features(wav,Config().features,None,normalize_audio=normalize_audio)
                 break
             except (ValueError,OSError,RuntimeError):
                 continue
     print('選択した方式を解析しています：'+', '.join(methods),flush=True)
-    from ..audio import normalization_notice
+    from ..audio import normalization_notice,source_format
     changes=[]
+    formats=Counter()
+    unreadable=0
     for wav in sorted(folder.iterdir()):
         if wav.is_file() and wav.suffix.lower()=='.wav':
             try:
-                change=normalization_notice(wav)
+                formats[source_format(wav)]+=1
+                change=normalization_notice(wav) if normalize_audio else None
                 if change:changes.append(f'{wav.name}: {change}')
-            except (ValueError,OSError):
-                pass
+            except (ValueError,OSError,RuntimeError):
+                unreadable+=1
+    emit(diagnostic='audio',formats=dict(formats),converted=len(changes),unreadable=unreadable,
+         normalize_audio=normalize_audio)
     if changes:
         notice='入力WAVを解析用に44.1 kHz・16 bit相当・Monoへ変換します（元ファイルは変更しません）:\n'+'\n'.join(changes[:20])
         if len(changes)>20:notice+=f'\nほか {len(changes)-20} 件'
@@ -155,16 +184,24 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
     with ThreadPoolExecutor(max_workers=3,thread_name_prefix='oto-estimator') as pool:
         emit(phase='境界解析中')
         cache=str(folder/'キャッシュ'/'音響特徴') if cache_enabled else None
-        futures={pool.submit(worker,m,str(folder),device,paths[m],cache,progress,cancel):m for m in paths}
+        futures={pool.submit(worker,m,str(folder),device,paths[m],cache,progress,cancel,normalize_audio):m for m in paths}
         for future in as_completed(futures):
             method=futures[future]
             try:collected[method]=future.result()
             except Exception as e:collected[method]=dict(results={},errors={'worker':str(e)})
-            emit(method=method,message='処理終了' if 'worker' not in collected[method]['errors'] else '失敗: '+collected[method]['errors']['worker'])
+            report=collected[method]
+            emit(diagnostic='worker',method=method,success=len(report['results']),
+                 failed=len(report['errors']),skipped=0,
+                 error_reasons=dict(Counter(error_category(e) for e in report['errors'].values())),
+                 elapsed_s=report.get('elapsed_s'),
+                 device=report.get('device','unknown'),backend=report.get('backend','unknown'))
             print(method+' 完了',flush=True)
     if cancel is not None and cancel.is_set():raise InterruptedError('解析を中止しました')
     base=collected['existing']['results']
-    if not base:raise RuntimeError('音響解析の結果を生成できませんでした: '+str(collected['existing']['errors']))
+    if not base:
+        reasons=Counter(collected['existing']['errors'].values())
+        summary='、'.join(f'{reason}（{count}件）' for reason,count in reasons.most_common(3))
+        raise RuntimeError(f'音響解析に成功したWAVはありません（失敗{len(collected["existing"]["errors"])}件）。{summary}')
     emit(phase='統合中')
     reports={};payloads={};method_entries={}
     for method in paths:
@@ -176,7 +213,14 @@ def run(folder,device='auto',vision=None,alignment=None,progress=None,methods=No
                 converted,notes[filename]=variant(rows,collected[method]['results'].get(filename,[]));entries.extend(converted)
         method_entries[method]=entries
         if method in methods:payloads[output_name(method,methods)]=serialize(entries)
-        reports[method]=dict(errors=collected[method]['errors'],pid=collected[method].get('pid'),thread_id=collected[method].get('thread_id'),execution='threads',entries=len(entries),details=notes,device=device)
+        fallback=Counter(row['fallback'] for rows in notes.values() for row in rows if row['fallback'])
+        reports[method]=dict(errors=collected[method]['errors'],pid=collected[method].get('pid'),thread_id=collected[method].get('thread_id'),execution='threads',entries=len(entries),details=notes,
+            device=collected[method].get('device','unknown'),backend=collected[method].get('backend','unknown'),
+            elapsed_s=collected[method].get('elapsed_s'),success_wavs=len(collected[method]['results']),
+            failed_wavs=len(collected[method]['errors']),adopted=len(entries)-sum(fallback.values()) if method!='existing' else len(entries),
+            fallback_reasons=dict(fallback))
+        emit(diagnostic='method',method=method,adopted=reports[method]['adopted'],
+             fallback_reasons=dict(fallback),failed_wavs=reports[method]['failed_wavs'])
     merged=median_variant(method_entries,methods)
     if return_data:
         return merged,reports

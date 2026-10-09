@@ -13,6 +13,8 @@ import importlib.util
 import os
 from pathlib import Path
 import sys
+import json
+from datetime import datetime,timezone
 
 from PyInstaller.archive.readers import CArchiveReader
 from PyInstaller.__main__ import run as pyinstaller_run
@@ -117,6 +119,8 @@ exe = EXE(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the compact CUDA one-file EXE")
     parser.add_argument("--reference-exe", type=Path, required=True)
+    parser.add_argument("--models-dir", type=Path, help="Use already extracted model files instead of reading them from the reference EXE")
+    parser.add_argument("--cuda-dll-dir", type=Path, help="Use already extracted CUDA runtime DLLs instead of reading them from the reference EXE")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
     parser.add_argument("--work-dir", type=Path, default=ROOT / "build" / "cuda-single")
     args = parser.parse_args()
@@ -134,9 +138,23 @@ def main() -> None:
     package_root("fastrlock")
 
     model_dir, dll_dir = work / "models", work / "cuda-dlls"
-    extract_reference_files(reference, model_dir, dll_dir)
+    if args.models_dir and args.cuda_dll_dir:
+        model_dir.mkdir(parents=True, exist_ok=True)
+        dll_dir.mkdir(parents=True, exist_ok=True)
+        for name in MODELS:
+            source = args.models_dir / name
+            if not source.is_file():
+                raise FileNotFoundError(f"Model missing from --models-dir: {source}")
+            (model_dir / name).write_bytes(source.read_bytes())
+        for name in CUDA_DLLS:
+            source = args.cuda_dll_dir / name
+            if not source.is_file():
+                raise FileNotFoundError(f"CUDA DLL missing from --cuda-dll-dir: {source}")
+            (dll_dir / name).write_bytes(source.read_bytes())
+    else:
+        extract_reference_files(reference, model_dir, dll_dir)
     device_profile = work / "distribution.json"
-    device_profile.write_text('{"device":"cuda"}\n', encoding="utf-8")
+    device_profile.write_text(json.dumps({'device':'cuda','build':datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')})+'\n',encoding='utf-8')
     spec_path = work / "cuda_single.spec"
     make_spec(spec_path, model_dir, dll_dir, cupy_root, device_profile)
 

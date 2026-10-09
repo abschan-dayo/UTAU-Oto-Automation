@@ -18,6 +18,7 @@ class Backend:
         self.torch = None
         self.cupy = None
         self.backend_name = 'NumPy'
+        self.gpu_name = None
         if requested != 'cpu':
             try:
                 import cupy
@@ -25,6 +26,9 @@ class Backend:
                 self.cupy = cupy
                 self.device = 'cuda'
                 self.backend_name = f'CuPy {cupy.__version__}'
+                gpu=cupy.cuda.runtime.getDeviceProperties(cupy.cuda.runtime.getDevice())
+                name=gpu['name']
+                self.gpu_name=name.decode('utf-8','replace') if isinstance(name,bytes) else str(name)
             except Exception as cupy_error:
                 try:
                     import torch
@@ -34,8 +38,10 @@ class Backend:
                     self.torch = torch
                     self.device = 'cuda'
                     self.backend_name = f'PyTorch {torch.__version__}'
+                    self.gpu_name=torch.cuda.get_device_name(0)
                 except (ImportError, OSError, RuntimeError) as torch_error:
-                    self.reason = f'CUDA unavailable; using CPU: {cupy_error}; {torch_error}'
+                    self.reason = ('CUDAを初期化できないためCPUへ切り替えました。'
+                        f'CuPy: {type(cupy_error).__name__}、PyTorch: {type(torch_error).__name__}')
 
     def spectrum(self, frames, n=None):
         if self.cupy is not None:

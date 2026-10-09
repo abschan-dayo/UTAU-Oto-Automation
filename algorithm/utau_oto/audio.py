@@ -7,10 +7,11 @@ import soundfile as sf
 TARGET_RATE = 44100
 
 
-def read_wav(path: Path):
-    """Return mono float audio normalized to 44.1 kHz and PCM-16 precision.
+def read_wav(path: Path, normalize=True):
+    """Read mono float audio, optionally normalizing to 44.1 kHz / PCM-16 precision.
 
-    Conversion is in memory only. The original WAV remains byte-for-byte intact.
+    Channel downmixing is always in memory because estimators require mono audio.
+    Normalization is in memory only; the original WAV remains byte-for-byte intact.
     """
     try:
         with sf.SoundFile(str(path), 'r') as w:
@@ -24,21 +25,19 @@ def read_wav(path: Path):
     if len(data) != expected or len(data) < 441 or not np.isfinite(data).all():
         raise ValueError('WAVが短すぎるか、データが不正です')
 
-    changed = []
     if channels != 1:
         # Average channels for predictable mono conversion, including multichannel files.
         data = data.mean(axis=1)
-        changed.append(f'{channels}ch→Mono')
     else:
         data = data[:, 0]
+    if not normalize:
+        return data, source_rate
     if source_rate != TARGET_RATE:
         from scipy.signal import resample_poly
         from math import gcd
         factor = gcd(source_rate, TARGET_RATE)
         data = resample_poly(data, TARGET_RATE // factor, source_rate // factor)
-        changed.append(f'{source_rate}Hz→44100Hz')
-    if subtype != 'PCM_16':
-        changed.append(f'{subtype}→16bit相当')
+
     # Match signed 16-bit PCM quantization precision while keeping float input for DSP.
     data = np.clip(data, -1.0, 1.0 - 1.0 / 32768.0)
     data = (data * 32768.0).round() / 32768.0
@@ -60,6 +59,12 @@ def normalization_notice(path: Path):
         changed.append(f'{info.channels}ch→Mono')
     if info.samplerate != TARGET_RATE:
         changed.append(f'{info.samplerate}Hz→44100Hz')
-    if info.subtype not in ('PCM_16', 'PCM_U8'):
+    if info.subtype != 'PCM_16':
         changed.append(f'{info.subtype}→16bit相当')
     return ', '.join(changed) if changed else None
+
+
+def source_format(path: Path):
+    """Return a compact format description without exposing the source path."""
+    info=sf.info(str(path))
+    return f'{info.samplerate} Hz / {info.subtype} / {info.channels} ch'

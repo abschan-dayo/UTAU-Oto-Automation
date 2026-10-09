@@ -2,6 +2,8 @@
 from pathlib import Path
 import os
 import sys
+import json
+from datetime import datetime,timezone
 
 from PyInstaller.__main__ import run as pyinstaller_run
 
@@ -18,7 +20,7 @@ def main():
     output = ROOT / 'dist-cpu-single'
     work.mkdir(parents=True, exist_ok=True)
     profile = work / 'distribution.json'
-    profile.write_text('{"device":"cpu"}\n', encoding='utf-8')
+    profile.write_text(json.dumps({'device':'cpu','build':datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')})+'\n',encoding='utf-8')
     tcl = Path(sys.base_prefix) / 'tcl'
     for variable, folder in (('TCL_LIBRARY', 'tcl8.6'), ('TK_LIBRARY', 'tk8.6')):
         path = tcl / folder

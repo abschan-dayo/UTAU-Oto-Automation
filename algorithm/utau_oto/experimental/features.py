@@ -11,21 +11,26 @@ FEATURE_VERSION=2
 def frame_to_ms(frame,config): return np.asarray(frame)*config.hop_length/config.sample_rate*1000
 def ms_to_frame(ms,config): return np.asarray(ms)*config.sample_rate/(1000*config.hop_length)
 
-def read_experimental_wav(path):
-    """Use the common read-only normalization for every estimator."""
-    return read_wav(path)
+def read_experimental_wav(path, normalize_audio=True):
+    """Read the input with the selected normalization mode."""
+    return read_wav(path, normalize=normalize_audio)
 
-def extract_features(path,config,cache_dir=None):
+def extract_features(path,config,cache_dir=None,normalize_audio=True):
     path=Path(path);digest=hashlib.sha256(path.read_bytes()).hexdigest()
-    signature=json.dumps(dict(version=FEATURE_VERSION,config=asdict(config)),sort_keys=True)
+    signature=json.dumps(dict(version=FEATURE_VERSION,config=asdict(config),normalize_audio=normalize_audio),sort_keys=True)
     key=hashlib.sha256((digest+signature).encode()).hexdigest()
     cached=Path(cache_dir)/(key+'.npz') if cache_dir else None
     if cached and cached.exists():
         try:
             with np.load(cached,allow_pickle=False) as z:return {k:z[k] for k in z.files}
         except (ValueError,OSError): pass
-    x,sr=read_wav(path)
-    if sr!=config.sample_rate:raise ValueError('Sample rate does not match model config')
+    x,sr=read_wav(path,normalize=normalize_audio)
+    if sr!=config.sample_rate:
+        from math import gcd
+        from scipy.signal import resample_poly
+        factor=gcd(sr,config.sample_rate)
+        x=resample_poly(x,config.sample_rate//factor,sr//factor)
+        sr=config.sample_rate
     spectrum=abs(librosa.stft(x,n_fft=config.n_fft,hop_length=config.hop_length,center=True))**2
     mel=librosa.feature.melspectrogram(S=spectrum,sr=sr,n_fft=config.n_fft,n_mels=config.n_mels,fmin=config.fmin,fmax=config.fmax)
     mel_db=librosa.power_to_db(mel,ref=max(float(mel.max()),1e-10),top_db=config.top_db) if mel.max()>1e-10 else np.full_like(mel,-config.top_db)

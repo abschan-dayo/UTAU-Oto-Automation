@@ -20,7 +20,7 @@ def estimate_file(path,device='auto'):
 
 class ExistingAdapter:
     """Mirror CLI's folder-level short-recording hint without writing any files."""
-    def __init__(self,folder,device='auto',cache_enabled=True):
+    def __init__(self,folder,device='auto',cache_enabled=True,normalize_audio=True):
         from pathlib import Path
         from dataclasses import replace
         import numpy as np
@@ -31,6 +31,7 @@ class ExistingAdapter:
         from ..rhythm import fit_grid
         from ..config import AnalysisConfig
         self.config=AnalysisConfig();self.backend=Backend(device);self.preload={};self.cache_enabled=cache_enabled
+        self.normalize_audio=normalize_audio
         files=sorted((p for p in Path(folder).iterdir() if p.is_file() and p.suffix.lower()=='.wav'),key=lambda p:p.name)
         long=[]
         for path in files:
@@ -42,7 +43,7 @@ class ExistingAdapter:
             for index in sorted(set(np.linspace(0,len(long)-1,min(5,len(long))).astype(int))):
                 path=long[index]
                 try:
-                    parsed=parse_name(path.name);x,sr=read_wav(path);feature=extract(x,sr,self.backend,config=self.config)
+                    parsed=parse_name(path.name);x,sr=read_wav(path,normalize=normalize_audio);feature=extract(x,sr,self.backend,config=self.config)
                     anchors,_,score,silent=align(feature,parsed.moras)
                     if silent:continue
                     _,tempo=fit_grid([feature.times[j] for j in anchors],parsed.moras,feature,score)
@@ -61,7 +62,7 @@ class ExistingAdapter:
         path=Path(path);cached=self.preload.pop(str(path.resolve()),None)
         f=cached[1] if cached and cached[0]==hashlib.sha256(path.read_bytes()).hexdigest() else None
         if f is None:
-            x,sr=read_wav(path);f=extract(x,sr,self.backend,config=self.config)
+            x,sr=read_wav(path,normalize=self.normalize_audio);f=extract(x,sr,self.backend,config=self.config)
         entries,report=analyze(parse_name(path.name),f,config=self.config)
         from ..preutterance_calibration import calibrate_entries
         entries,report['calibration']=calibrate_entries(entries,path,

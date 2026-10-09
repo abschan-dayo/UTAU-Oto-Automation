@@ -3,6 +3,19 @@ import json
 from pathlib import Path
 import sys
 
+VERSION = '0.2.1-Beta'
+
+
+def distribution_info():
+    base=Path(sys._MEIPASS) if getattr(sys,'frozen',False) else Path(__file__).resolve().parents[1]
+    path=base/'distribution.json'
+    try:
+        profile=json.loads(path.read_text(encoding='utf-8'))
+    except (OSError,ValueError):
+        profile={}
+    return {'version':VERSION,'build':str(profile.get('build','source')),
+            'profile':str(profile.get('device','auto'))}
+
 def default_device(profile=None):
     import os
     override=os.environ.get('AUTOTO_DEVICE')
